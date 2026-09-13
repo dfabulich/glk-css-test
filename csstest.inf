@@ -1,0 +1,763 @@
+! Glk CSS Basic Test
+! Exercises the CSS Basic property/value set from:
+!   https://curiousdannii.github.io/if/glk-proposals.html#css
+!   https://intfiction.org/t/glk-extension-proposal-css/66228
+!
+
+Constant gestalt_CSSBasic = $1110;
+
+Constant style_Normal = 0;
+Constant style_Emphasized = 1;
+Constant style_Header = 3;
+Constant style_Subheader = 4;
+Constant style_Note = 6;
+Constant style_BlockQuote = 7;
+Constant style_User1 = 9;
+Constant style_User2 = 10;
+
+Constant wintype_TextBuffer = 3;
+
+Constant winmethod_Left = $00;
+Constant winmethod_Below = $03;
+Constant winmethod_Proportional = $20;
+
+Constant evtype_LineInput = 3;
+Constant evtype_Arrange = 5;
+
+Constant CSS_Span = 0;
+Constant CSS_Paragraph = 1;
+
+Global mainwin;
+Global win_para;
+
+! --- Property name buffers --------------------------------------------------
+
+Array p_color buffer "color";
+Array p_bgcolor buffer "background-color";
+Array p_reverse buffer "-iftf-reverse-video";
+Array p_weight buffer "font-weight";
+Array p_style buffer "font-style";
+Array p_size buffer "font-size";
+Array p_family buffer "font-family";
+Array p_decor buffer "text-decoration";
+Array p_decor_line buffer "text-decoration-line";
+Array p_align buffer "text-align";
+Array p_margin_l buffer "margin-left";
+Array p_margin_r buffer "margin-right";
+Array p_indent buffer "text-indent";
+
+! --- Value buffers: colors --------------------------------------------------
+
+Array v_hash_rgb buffer "#f00";
+Array v_hash_rrggbb buffer "#00aa00";
+Array v_hash_rrggbbaa buffer "#0000ff80";
+Array v_transparent buffer "transparent";
+Array v_black buffer "black";
+Array v_white buffer "white";
+Array v_red buffer "red";
+Array v_green buffer "green";
+Array v_blue buffer "blue";
+Array v_cyan buffer "cyan";
+Array v_magenta buffer "magenta";
+Array v_yellow buffer "yellow";
+Array v_gray buffer "gray";
+Array v_grey buffer "grey";
+Array v_silver buffer "silver";
+Array v_maroon buffer "maroon";
+Array v_olive buffer "olive";
+Array v_lime buffer "lime";
+Array v_aqua buffer "aqua";
+Array v_teal buffer "teal";
+Array v_navy buffer "navy";
+Array v_purple buffer "purple";
+Array v_fuchsia buffer "fuchsia";
+Array v_orange buffer "orange";
+Array v_pink buffer "pink";
+Array v_bg_silver buffer "#c0c0c0";
+
+! --- Value buffers: reverse / weight / style / decoration -------------------
+
+Array v_reverse buffer "reverse";
+Array v_none buffer "none";
+Array v_normal buffer "normal";
+Array v_bold buffer "bold";
+Array v_400 buffer "400";
+Array v_700 buffer "700";
+Array v_italic buffer "italic";
+Array v_oblique buffer "oblique";
+Array v_underline buffer "underline";
+
+! --- Value buffers: font-size -----------------------------------------------
+
+Array v_small buffer "small";
+Array v_medium buffer "medium";
+Array v_large buffer "large";
+Array v_larger buffer "larger";
+Array v_smaller buffer "smaller";
+Array v_pct0 buffer "0%";
+Array v_pct50 buffer "50%";
+Array v_pct100 buffer "100%";
+Array v_pct150 buffer "150%";
+Array v_12px buffer "12px";
+Array v_18px buffer "18px";
+Array v_14pt buffer "14pt";
+Array v_em15 buffer "1.5em";
+Array v_em2 buffer "2em";
+
+! --- Value buffers: font-family ---------------------------------------------
+
+Array v_serif buffer "serif";
+Array v_sans buffer "sans-serif";
+Array v_mono buffer "monospace";
+Array v_courier buffer "Courier";
+Array v_courier_new buffer "'Courier New'";
+Array v_courier_list buffer "'Courier New', Courier, monospace";
+
+! --- Value buffers: paragraph -----------------------------------------------
+
+Array v_left buffer "left";
+Array v_right buffer "right";
+Array v_center buffer "center";
+Array v_justify buffer "justify";
+Array v_0 buffer "0";
+Array v_24px buffer "24px";
+Array v_12pt buffer "12pt";
+
+Array event --> 4;
+Array line_buffer -> 80;
+Array cmd_restart buffer "restart";
+Array cmd_quit buffer "quit";
+Array cmd_q buffer "q";
+
+! --- Glk entry points -------------------------------------------------------
+
+[ glk_exit;
+	glk($0001);
+];
+
+[ glk_gestalt sel val;
+	return glk($0004, sel, val);
+];
+
+[ glk_window_open split method size wintype rock;
+	return glk($0023, split, method, size, wintype, rock);
+];
+
+[ glk_window_close win;
+	glk($0024, win, 0);
+];
+
+[ glk_window_clear win;
+	glk($002A, win);
+];
+
+[ glk_set_window win;
+	glk($002F, win);
+];
+
+[ glk_set_style styl;
+	glk($0086, styl);
+];
+
+[ glk_select ev;
+	glk($00C0, ev);
+];
+
+[ glk_request_line_event win buf maxlen initlen;
+	glk($00D0, win, buf, maxlen, initlen);
+];
+
+[ glk_cancel_line_event win ev;
+	glk($00D1, win, ev);
+];
+
+[ glk_css_hint_set wintype styl span_or_par prop proplen val vallen;
+	glk($1110, wintype, styl, span_or_par, prop, proplen, val, vallen);
+];
+
+[ glk_css_hint_set_num wintype styl span_or_par prop proplen val;
+	glk($1111, wintype, styl, span_or_par, prop, proplen, val);
+];
+
+[ glk_css_hint_clear wintype styl span_or_par prop proplen;
+	glk($1112, wintype, styl, span_or_par, prop, proplen);
+];
+
+[ glk_css_hint_selector_set wintype sel sellen prop proplen val vallen;
+	glk($1113, wintype, sel, sellen, prop, proplen, val, vallen);
+];
+
+[ glk_css_hint_clear_all_by_style wintype styl;
+	glk($1119, wintype, styl);
+];
+
+[ glk_css_inline_set span_or_par prop proplen val vallen;
+	glk($1116, span_or_par, prop, proplen, val, vallen);
+];
+
+[ glk_css_inline_set_num span_or_par prop proplen val;
+	glk($1117, span_or_par, prop, proplen, val);
+];
+
+[ glk_css_inline_clear span_or_par prop proplen;
+	glk($1118, span_or_par, prop, proplen);
+];
+
+! --- Helpers: buffer arrays are (len word) + bytes --------------------------
+
+[ BufPtr arr; return arr + 4; ];
+[ BufLen arr; return arr-->0; ];
+
+[ CssInline prop val;
+	glk_css_inline_set(CSS_Span, BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
+[ CssInlinePara prop val;
+	glk_css_inline_set(CSS_Paragraph, BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
+[ CssInlineNum prop val;
+	glk_css_inline_set_num(CSS_Span, BufPtr(prop), BufLen(prop), val);
+];
+
+[ CssClear prop;
+	glk_css_inline_clear(CSS_Span, BufPtr(prop), BufLen(prop));
+];
+
+[ CssClearPara prop;
+	glk_css_inline_clear(CSS_Paragraph, BufPtr(prop), BufLen(prop));
+];
+
+[ CssHintSpan styl prop val;
+	glk_css_hint_set(wintype_TextBuffer, styl, CSS_Span,
+		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
+[ CssHintPara styl prop val;
+	glk_css_hint_set(wintype_TextBuffer, styl, CSS_Paragraph,
+		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
+[ CssHintClearSpan styl prop;
+	glk_css_hint_clear(wintype_TextBuffer, styl, CSS_Span,
+		BufPtr(prop), BufLen(prop));
+];
+
+[ CssWindow prop val;
+	! Empty selector targets the window itself.
+	glk_css_hint_selector_set(wintype_TextBuffer, 0, 0,
+		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
+[ Section title;
+	new_line;
+	glk_set_style(style_Header);
+	print (string) title;
+	new_line;
+	glk_set_style(style_Normal);
+];
+
+[ SubSection title;
+	glk_set_style(style_Subheader);
+	print (string) title;
+	new_line;
+	glk_set_style(style_Normal);
+];
+
+! Label in Normal, then sample text with one inline property applied.
+[ Sample1 label prop val;
+	print (string) label, ": ";
+	CssInline(prop, val);
+	print "Sample text";
+	CssClear(prop);
+	new_line;
+];
+
+! Label + sample with two inline properties (e.g. color + background).
+[ Sample2 label p1 v1 p2 v2;
+	print (string) label, ": ";
+	CssInline(p1, v1);
+	CssInline(p2, v2);
+	print "Sample text";
+	CssClear(p1);
+	CssClear(p2);
+	new_line;
+];
+
+! Named-color swatch: colored text on a light silver background.
+[ ColorSwatch name val;
+	print (string) name, ": ";
+	CssInline(p_bgcolor, v_bg_silver);
+	CssInline(p_color, val);
+	print "##### ";
+	print (string) name;
+	print " #####";
+	CssClear(p_color);
+	CssClear(p_bgcolor);
+	new_line;
+];
+
+! Case-folded match of the completed line against a buffer-array command word.
+[ LineMatches cmd   i len ch1 ch2 cmdbytes;
+	len = event-->2;
+	if (len ~= BufLen(cmd)) rfalse;
+	cmdbytes = BufPtr(cmd);
+	for (i = 0 : i < len : i++) {
+		ch1 = line_buffer->i;
+		if (ch1 >= 'A' && ch1 <= 'Z') ch1 = ch1 + 32;
+		ch2 = cmdbytes->i;
+		if (ch2 >= 'A' && ch2 <= 'Z') ch2 = ch2 + 32;
+		if (ch1 ~= ch2) rfalse;
+	}
+	rtrue;
+];
+
+[ CloseSplitWindows;
+	if (win_para) {
+		glk_window_close(win_para);
+		win_para = 0;
+	}
+	glk_set_window(mainwin);
+];
+
+[ ClearHintState;
+	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_Normal);
+	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_Emphasized);
+	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_Header);
+	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_Subheader);
+	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_Note);
+	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_BlockQuote);
+	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_User1);
+	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_User2);
+];
+
+[ PrintPrompt;
+	new_line;
+	print "Commands: restart, quit. Listening for arrange events^";
+	print "(e.g. toggle ~Games can set colors and styles~).^";
+	print "> ";
+];
+
+! Returns 1 = quit, 2 = restart. Handles arrange by noting it and re-prompting.
+[ CommandLoop   done;
+	done = 0;
+	PrintPrompt();
+	while (~~done) {
+		glk_request_line_event(mainwin, line_buffer, 80, 0);
+		glk_select(event);
+		if (event-->0 == evtype_Arrange) {
+			glk_cancel_line_event(mainwin, event);
+			new_line;
+			print "[arrange — theme/styles may have changed; existing text is^";
+			print " restyled by the interpreter. Type restart to re-run samples.]^";
+			PrintPrompt();
+			continue;
+		}
+		if (event-->0 ~= evtype_LineInput) continue;
+		if (LineMatches(cmd_quit) || LineMatches(cmd_q)) {
+			done = 1;
+			continue;
+		}
+		if (LineMatches(cmd_restart)) {
+			done = 2;
+			continue;
+		}
+		print "Unknown command. Try restart or quit.^";
+		print "> ";
+	}
+	return done;
+];
+
+[ RunTests
+	win_span_full win_span_nocolor win_span_clear win_num;
+
+	print "CSS BASIC TEST BEGIN^";
+	print "gestalt_CSSBasic / function IDs: 0x1110-0x111C^";
+
+	! ======================================================================
+	Section("1. Inline color");
+
+	Sample1("color #rgb (#f00)", p_color, v_hash_rgb);
+	Sample1("color #rrggbb (#00aa00)", p_color, v_hash_rrggbb);
+	Sample1("color #rrggbbaa (#0000ff80, expect translucent blue)",
+		p_color, v_hash_rrggbbaa);
+
+	SubSection("Named colors (text on silver)");
+	ColorSwatch("transparent (expect invisible / no color)", v_transparent);
+	ColorSwatch("black", v_black);
+	ColorSwatch("white", v_white);
+	ColorSwatch("red", v_red);
+	ColorSwatch("green", v_green);
+	ColorSwatch("blue", v_blue);
+	ColorSwatch("cyan", v_cyan);
+	ColorSwatch("magenta", v_magenta);
+	ColorSwatch("yellow", v_yellow);
+	ColorSwatch("gray", v_gray);
+	ColorSwatch("grey", v_grey);
+	ColorSwatch("silver", v_silver);
+	ColorSwatch("maroon", v_maroon);
+	ColorSwatch("olive", v_olive);
+	ColorSwatch("lime", v_lime);
+	ColorSwatch("aqua", v_aqua);
+	ColorSwatch("teal", v_teal);
+	ColorSwatch("navy", v_navy);
+	ColorSwatch("purple", v_purple);
+	ColorSwatch("fuchsia", v_fuchsia);
+	ColorSwatch("orange", v_orange);
+	ColorSwatch("pink", v_pink);
+
+	! ======================================================================
+	Section("2. Inline background-color");
+
+	Sample2("bg #rgb on black text", p_color, v_black, p_bgcolor, v_hash_rgb);
+	Sample2("bg #rrggbb", p_color, v_black, p_bgcolor, v_hash_rrggbb);
+	Sample2("bg #rrggbbaa (#0000ff80)", p_color, v_black, p_bgcolor, v_hash_rrggbbaa);
+	Sample2("bg named yellow", p_color, v_black, p_bgcolor, v_yellow);
+	Sample2("bg transparent (no fill)", p_color, v_red, p_bgcolor, v_transparent);
+
+	! ======================================================================
+	Section("3. Inline -iftf-reverse-video");
+
+	print "baseline (black on white, no reverse): ";
+	CssInline(p_color, v_black);
+	CssInline(p_bgcolor, v_white);
+	print "Sample text";
+	CssClear(p_color);
+	CssClear(p_bgcolor);
+	new_line;
+	print "reverse (expect white on black): ";
+	CssInline(p_color, v_black);
+	CssInline(p_bgcolor, v_white);
+	CssInline(p_reverse, v_reverse);
+	print "Sample text";
+	CssClear(p_reverse);
+	CssClear(p_color);
+	CssClear(p_bgcolor);
+	new_line;
+	print "none (expect black on white): ";
+	CssInline(p_color, v_black);
+	CssInline(p_bgcolor, v_white);
+	CssInline(p_reverse, v_none);
+	print "Sample text";
+	CssClear(p_reverse);
+	CssClear(p_color);
+	CssClear(p_bgcolor);
+	new_line;
+
+	print "baseline (default theme colors, no reverse): ";
+	CssClear(p_color);
+	CssClear(p_bgcolor);
+	print "Sample text";
+	new_line;
+	print "reverse with no fg/bg (expect inverted theme colors): ";
+	CssClear(p_color);
+	CssClear(p_bgcolor);
+	CssInline(p_reverse, v_reverse);
+	print "Sample text";
+	CssClear(p_reverse);
+	new_line;
+
+	SubSection("Multi-line reverse (span background)");
+	print "(Expect white-on-black glyph fills that follow the wrapped runs, not a full content-box bar.)^";
+	CssInline(p_color, v_black);
+	CssInline(p_bgcolor, v_white);
+	CssInline(p_reverse, v_reverse);
+	print "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump. The five boxing wizards jump quickly.^";
+	CssClear(p_reverse);
+	CssClear(p_color);
+	CssClear(p_bgcolor);
+
+	! ======================================================================
+	Section("4. Inline font-weight");
+
+	Sample1("normal", p_weight, v_normal);
+	Sample1("bold", p_weight, v_bold);
+	Sample1("400 (= normal)", p_weight, v_400);
+	Sample1("700 (= bold)", p_weight, v_700);
+	print "set_num 400: ";
+	CssInlineNum(p_weight, 400);
+	print "Sample text";
+	CssClear(p_weight);
+	new_line;
+	print "set_num 700: ";
+	CssInlineNum(p_weight, 700);
+	print "Sample text";
+	CssClear(p_weight);
+	new_line;
+
+	! ======================================================================
+	Section("5. Inline font-style");
+
+	Sample1("normal", p_style, v_normal);
+	Sample1("italic", p_style, v_italic);
+	Sample1("oblique", p_style, v_oblique);
+
+	! ======================================================================
+	Section("6. Inline font-size");
+
+	Sample1("small", p_size, v_small);
+	Sample1("medium", p_size, v_medium);
+	Sample1("large", p_size, v_large);
+	Sample1("larger", p_size, v_larger);
+	Sample1("smaller", p_size, v_smaller);
+	Sample1("0%", p_size, v_pct0);
+	Sample1("50%", p_size, v_pct50);
+	Sample1("100%", p_size, v_pct100);
+	Sample1("150%", p_size, v_pct150);
+	Sample1("12px", p_size, v_12px);
+	Sample1("18px", p_size, v_18px);
+	Sample1("14pt", p_size, v_14pt);
+	Sample1("1.5em", p_size, v_em15);
+
+	! ======================================================================
+	Section("7. Inline font-family");
+
+	Sample1("serif", p_family, v_serif);
+	Sample1("sans-serif", p_family, v_sans);
+	Sample1("monospace", p_family, v_mono);
+	Sample1("Courier", p_family, v_courier);
+	Sample1("'Courier New'", p_family, v_courier_new);
+	Sample1("'Courier New', Courier, monospace", p_family, v_courier_list);
+
+	! ======================================================================
+	Section("8. Inline text-decoration / text-decoration-line");
+
+	Sample1("text-decoration underline", p_decor, v_underline);
+	Sample1("text-decoration none", p_decor, v_none);
+	Sample1("text-decoration-line underline", p_decor_line, v_underline);
+	Sample1("text-decoration-line none", p_decor_line, v_none);
+
+	! Combined span styles
+	SubSection("Combined inline styles");
+	print "bold+italic+underline+red+large: ";
+	CssInline(p_weight, v_bold);
+	CssInline(p_style, v_italic);
+	CssInline(p_decor, v_underline);
+	CssInline(p_color, v_red);
+	CssInline(p_size, v_large);
+	print "Sample text";
+	CssClear(p_weight);
+	CssClear(p_style);
+	CssClear(p_decor);
+	CssClear(p_color);
+	CssClear(p_size);
+	new_line;
+
+	! ======================================================================
+	Section("9. Inline paragraph text-align (CSS_Paragraph)");
+	print "(Inline paragraph styles apply to the next block; each sample is its own line.)^";
+
+	CssInlinePara(p_align, v_left);
+	print "text-align:left — The quick brown fox jumps over the lazy dog.^";
+	CssClearPara(p_align);
+
+	CssInlinePara(p_align, v_right);
+	print "text-align:right — The quick brown fox jumps over the lazy dog.^";
+	CssClearPara(p_align);
+
+	CssInlinePara(p_align, v_center);
+	print "text-align:center — The quick brown fox jumps over the lazy dog.^";
+	CssClearPara(p_align);
+
+	CssInlinePara(p_align, v_justify);
+	print "text-align:justify — The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump.^";
+	CssClearPara(p_align);
+
+	! ======================================================================
+	Section("10. Paragraph hints (CSS_Paragraph — open window after set)");
+	print "(Like stylehints: css_hint_set only affects windows opened AFTER.^";
+	print " Already-open windows keep their creation-time snapshot.)^";
+
+	CssHintPara(style_User1, p_align, v_left);
+	CssHintPara(style_User1, p_bgcolor, v_yellow);
+	CssHintPara(style_User2, p_align, v_right);
+	CssHintPara(style_BlockQuote, p_align, v_center);
+	CssHintPara(style_BlockQuote, p_bgcolor, v_cyan);
+	CssHintPara(style_Note, p_align, v_justify);
+	CssHintPara(style_Note, p_margin_l, v_24px);
+	CssHintPara(style_Note, p_margin_r, v_24px);
+	CssHintPara(style_Note, p_bgcolor, v_pink);
+	CssHintPara(style_Header, p_indent, v_em2);
+	CssHintPara(style_Subheader, p_indent, v_em15);
+	CssHintPara(style_Emphasized, p_margin_l, v_12pt);
+	CssHintPara(style_Emphasized, p_indent, v_0);
+	! Paragraph background alone (no other para props on this style here).
+	CssHintPara(style_Normal, p_bgcolor, v_silver);
+
+	glk_set_style(style_User1);
+	print "CONTROL win (open before hints): User1 — expect NO left-align / yellow bg.^";
+	glk_set_style(style_Normal);
+
+	win_para = glk_window_open(mainwin, winmethod_Left + winmethod_Proportional, 42,
+		wintype_TextBuffer, 0);
+	glk_set_window(win_para);
+	glk_set_style(style_Header);
+	print "win_para (opened after para hints)^";
+	glk_set_style(style_Normal);
+	print "Normal background-color:silver only — The quick brown fox jumps over the lazy dog.^";
+	glk_set_style(style_User1);
+	print "User1 text-align:left + background-color:yellow — The quick brown fox jumps over the lazy dog.^";
+	glk_set_style(style_User2);
+	print "User2 text-align:right — The quick brown fox jumps over the lazy dog.^";
+	glk_set_style(style_BlockQuote);
+	print "BlockQuote text-align:center + background-color:cyan — The quick brown fox jumps over the lazy dog.^";
+	glk_set_style(style_Note);
+	print "Note justify + margins 24px + background-color:pink — The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.^";
+	glk_set_style(style_Header);
+	print "Header text-indent:2em — first line indented.^";
+	glk_set_style(style_Subheader);
+	print "Subheader text-indent:1.5em — fractional first-line indent.^";
+	glk_set_style(style_Emphasized);
+	print "Emphasized margin-left:12pt text-indent:0 — body indent.^";
+	glk_set_style(style_Normal);
+
+	SubSection("Multi-line reverse (paragraph background)");
+	print "(Expect content-box fills inverted with the text across wraps — full bars inside margins, not glyph-only.)^";
+	print "User1 yellow para bg + reverse:^";
+	glk_set_style(style_User1);
+	CssInline(p_reverse, v_reverse);
+	print "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump. The five boxing wizards jump quickly.^";
+	CssClear(p_reverse);
+	glk_set_style(style_Normal);
+	print "Normal silver para bg + reverse:^";
+	CssInline(p_reverse, v_reverse);
+	print "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump. The five boxing wizards jump quickly.^";
+	CssClear(p_reverse);
+
+	glk_set_window(mainwin);
+
+	! ======================================================================
+	Section("10b. Window selector (empty sel — open window after set)");
+	print "(Empty selector styles the window itself. background-color fills the pane.)^";
+	CssWindow(p_bgcolor, v_navy);
+	win_para = glk_window_open(mainwin, winmethod_Left + winmethod_Proportional, 30,
+		wintype_TextBuffer, 0);
+	glk_set_window(win_para);
+	print "win after empty-selector background-color:navy — pane should be navy.^";
+	glk_set_style(style_Normal);
+	print "Normal text on navy window.^";
+	glk_set_window(mainwin);
+
+	! ======================================================================
+	Section("11. Span hints (CSS_Span — open window after each change)");
+
+	CssHintSpan(style_User1, p_color, v_purple);
+	CssHintSpan(style_User1, p_weight, v_bold);
+	CssHintSpan(style_User1, p_decor, v_underline);
+
+	glk_set_style(style_User1);
+	print "CONTROL win: User1 — expect NO purple/bold/underline from hints.^";
+	glk_set_style(style_Normal);
+
+	win_span_full = glk_window_open(win_para, winmethod_Below + winmethod_Proportional, 50,
+		wintype_TextBuffer, 0);
+	glk_set_window(win_span_full);
+	print "win_span_full (after span set):^";
+	glk_set_style(style_User1);
+	print "User1 purple + bold + underline.^";
+	glk_set_style(style_Normal);
+	glk_set_window(mainwin);
+
+	CssHintClearSpan(style_User1, p_color);
+
+	glk_set_window(win_span_full);
+	glk_set_style(style_User1);
+	print "CONTROL win_span_full after clear color: still purple (open window).^";
+	glk_set_style(style_Normal);
+	glk_set_window(mainwin);
+
+	win_span_nocolor = glk_window_open(win_span_full, winmethod_Below + winmethod_Proportional, 50,
+		wintype_TextBuffer, 0);
+	glk_set_window(win_span_nocolor);
+	print "win_span_nocolor (opened after clear color):^";
+	glk_set_style(style_User1);
+	print "User1 bold+underline, no purple.^";
+	glk_set_style(style_Normal);
+	glk_set_window(mainwin);
+
+	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_User1);
+
+	glk_set_window(win_span_nocolor);
+	glk_set_style(style_User1);
+	print "CONTROL win_span_nocolor after clear_all: still bold+underline.^";
+	glk_set_style(style_Normal);
+	glk_set_window(mainwin);
+
+	win_span_clear = glk_window_open(win_span_nocolor, winmethod_Below + winmethod_Proportional, 50,
+		wintype_TextBuffer, 0);
+	glk_set_window(win_span_clear);
+	print "win_span_clear (opened after clear_all):^";
+	glk_set_style(style_User1);
+	print "User1 library defaults.^";
+	glk_set_style(style_Normal);
+	glk_set_window(mainwin);
+
+	! ======================================================================
+	Section("12. css_hint_set_num (open window after set)");
+
+	glk_css_hint_set_num(wintype_TextBuffer, style_User2, CSS_Span,
+		BufPtr(p_weight), BufLen(p_weight), 700);
+
+	glk_set_style(style_User2);
+	print "CONTROL win: User2 — expect NO bold from set_num.^";
+	glk_set_style(style_Normal);
+
+	win_num = glk_window_open(win_span_clear, winmethod_Below + winmethod_Proportional, 50,
+		wintype_TextBuffer, 0);
+	glk_set_window(win_num);
+	print "win_num (opened after set_num 700):^";
+	glk_set_style(style_User2);
+	print "User2 font-weight 700.^";
+	glk_set_style(style_Normal);
+	glk_set_window(mainwin);
+
+	! ======================================================================
+	Section("13. Inline clear");
+
+	CssInline(p_color, v_orange);
+	CssInline(p_weight, v_bold);
+	print "orange+bold before clear color: Sample";
+	new_line;
+	CssClear(p_color);
+	print "after clear color (still bold): Sample";
+	CssClear(p_weight);
+	new_line;
+
+	new_line;
+	print "CSS BASIC TEST END^";
+];
+
+[ Main
+	supported cmd;
+
+	@setiosys 2 0; ! select Glk I/O system
+
+	mainwin = glk_window_open(0, 0, 0, wintype_TextBuffer, 0);
+	glk_set_window(mainwin);
+	win_para = 0;
+
+	supported = glk_gestalt(gestalt_CSSBasic, 0);
+	print "gestalt_CSSBasic => ", supported, "^";
+	if (~~supported) {
+		print "CSS Basic not available; nothing further to exercise.^";
+		print "CSS BASIC TEST END^";
+		while (CommandLoop() == 2) {
+			glk_window_clear(mainwin);
+			print "gestalt_CSSBasic => ", supported, "^";
+			print "CSS Basic not available; nothing further to exercise.^";
+			print "CSS BASIC TEST END^";
+		}
+		glk_exit();
+	}
+
+	while (1) {
+		RunTests();
+		cmd = CommandLoop();
+		if (cmd == 1) break; ! quit
+		! restart: tear down splits, clear hints + main window, re-run
+		CloseSplitWindows();
+		ClearHintState();
+		glk_window_clear(mainwin);
+	}
+	glk_exit();
+];
