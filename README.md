@@ -8,4 +8,4 @@ A visual test sample for Dannii’s [CSS Glk extension](https://curiousdannii.gi
 ./build.sh
 ```
 
-Produces `csstest.ulx`. Open it in a Glulk interpreter and visually check each labeled sample.
+Produces `csstest.gblorb` (Glulx storyfile wrapped for Blorb resources). Open it in a Glk interpreter and visually check each labeled sample.
