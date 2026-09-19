@@ -19,6 +19,7 @@ Constant wintype_TextBuffer = 3;
 
 Constant winmethod_Left = $00;
 Constant winmethod_Below = $03;
+Constant winmethod_Fixed = $10;
 Constant winmethod_Proportional = $20;
 
 Constant evtype_LineInput = 3;
@@ -26,9 +27,17 @@ Constant evtype_Arrange = 5;
 
 Constant CSS_Span = 0;
 Constant CSS_Paragraph = 1;
+Constant CSS_Hyperlink = 2;
+Constant CSS_Image = 3;      ! reserved (not exercised here)
+Constant CSS_Input = 4;
+Constant CSS_Window = 5;
 
 Global mainwin;
-Global win_para;
+Global win_demo_flex; ! left-column remainder; always split this, never the last fixed leaf
+Global win_demo;      ! packed para/span/num/link demos (the flex pane itself)
+Global win_navy;      ! CSS_Window navy — must be its own pane
+Global win_span_nocolor; ! opened after color clear (snapshot sibling)
+Global win_span_clear;   ! opened after clear_all (snapshot sibling)
 
 ! --- Property name buffers --------------------------------------------------
 
@@ -45,6 +54,7 @@ Array p_align buffer "text-align";
 Array p_margin_l buffer "margin-left";
 Array p_margin_r buffer "margin-right";
 Array p_indent buffer "text-indent";
+Array p_border_style buffer "border-style";
 
 ! --- Value buffers: colors --------------------------------------------------
 
@@ -79,6 +89,7 @@ Array v_bg_silver buffer "#c0c0c0";
 
 Array v_reverse buffer "reverse";
 Array v_none buffer "none";
+Array v_solid buffer "solid";
 Array v_normal buffer "normal";
 Array v_bold buffer "bold";
 Array v_400 buffer "400";
@@ -128,6 +139,9 @@ Array line_buffer -> 80;
 Array cmd_restart buffer "restart";
 Array cmd_quit buffer "quit";
 Array cmd_q buffer "q";
+Array cmd_input_border_off buffer "input border off";
+Array cmd_input_border_on buffer "input border on";
+Array cmd_input_border_clear buffer "input border clear";
 
 ! --- Glk entry points -------------------------------------------------------
 
@@ -171,36 +185,40 @@ Array cmd_q buffer "q";
 	glk($00D1, win, ev);
 ];
 
-[ glk_css_hint_set wintype styl span_or_par prop proplen val vallen;
-	glk($1110, wintype, styl, span_or_par, prop, proplen, val, vallen);
+[ glk_css_hint_set wintype csstarget styl prop proplen val vallen;
+	glk($1110, wintype, csstarget, styl, prop, proplen, val, vallen);
 ];
 
-[ glk_css_hint_set_num wintype styl span_or_par prop proplen val;
-	glk($1111, wintype, styl, span_or_par, prop, proplen, val);
+[ glk_css_hint_set_num wintype csstarget styl prop proplen val;
+	glk($1111, wintype, csstarget, styl, prop, proplen, val);
 ];
 
-[ glk_css_hint_clear wintype styl span_or_par prop proplen;
-	glk($1112, wintype, styl, span_or_par, prop, proplen);
-];
-
-[ glk_css_hint_selector_set wintype sel sellen prop proplen val vallen;
-	glk($1113, wintype, sel, sellen, prop, proplen, val, vallen);
+[ glk_css_hint_clear wintype csstarget styl prop proplen;
+	glk($1112, wintype, csstarget, styl, prop, proplen);
 ];
 
 [ glk_css_hint_clear_all_by_style wintype styl;
-	glk($1119, wintype, styl);
+	glk($1116, wintype, styl);
 ];
 
-[ glk_css_inline_set span_or_par prop proplen val vallen;
-	glk($1116, span_or_par, prop, proplen, val, vallen);
+[ glk_css_hint_clear_all_by_window wintype;
+	glk($1117, wintype);
 ];
 
-[ glk_css_inline_set_num span_or_par prop proplen val;
-	glk($1117, span_or_par, prop, proplen, val);
+[ glk_css_inline_set csstarget prop proplen val vallen;
+	glk($1113, csstarget, prop, proplen, val, vallen);
 ];
 
-[ glk_css_inline_clear span_or_par prop proplen;
-	glk($1118, span_or_par, prop, proplen);
+[ glk_css_inline_set_num csstarget prop proplen val;
+	glk($1114, csstarget, prop, proplen, val);
+];
+
+[ glk_css_inline_clear csstarget prop proplen;
+	glk($1115, csstarget, prop, proplen);
+];
+
+[ glk_set_hyperlink linkval;
+	glk($0100, linkval);
 ];
 
 ! --- Helpers: buffer arrays are (len word) + bytes --------------------------
@@ -216,6 +234,10 @@ Array cmd_q buffer "q";
 	glk_css_inline_set(CSS_Paragraph, BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
 ];
 
+[ CssInlineLink prop val;
+	glk_css_inline_set(CSS_Hyperlink, BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
 [ CssInlineNum prop val;
 	glk_css_inline_set_num(CSS_Span, BufPtr(prop), BufLen(prop), val);
 ];
@@ -228,25 +250,86 @@ Array cmd_q buffer "q";
 	glk_css_inline_clear(CSS_Paragraph, BufPtr(prop), BufLen(prop));
 ];
 
+[ CssClearLink prop;
+	glk_css_inline_clear(CSS_Hyperlink, BufPtr(prop), BufLen(prop));
+];
+
 [ CssHintSpan styl prop val;
-	glk_css_hint_set(wintype_TextBuffer, styl, CSS_Span,
+	glk_css_hint_set(wintype_TextBuffer, CSS_Span, styl,
 		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
 ];
 
 [ CssHintPara styl prop val;
-	glk_css_hint_set(wintype_TextBuffer, styl, CSS_Paragraph,
+	glk_css_hint_set(wintype_TextBuffer, CSS_Paragraph, styl,
+		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
+[ CssHintLink styl prop val;
+	glk_css_hint_set(wintype_TextBuffer, CSS_Hyperlink, styl,
 		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
 ];
 
 [ CssHintClearSpan styl prop;
-	glk_css_hint_clear(wintype_TextBuffer, styl, CSS_Span,
+	glk_css_hint_clear(wintype_TextBuffer, CSS_Span, styl,
+		BufPtr(prop), BufLen(prop));
+];
+
+[ CssHintClearPara styl prop;
+	glk_css_hint_clear(wintype_TextBuffer, CSS_Paragraph, styl,
 		BufPtr(prop), BufLen(prop));
 ];
 
 [ CssWindow prop val;
-	! Empty selector targets the window itself.
-	glk_css_hint_selector_set(wintype_TextBuffer, 0, 0,
+	glk_css_hint_set(wintype_TextBuffer, CSS_Window, style_Normal,
 		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
+[ CssWindowClear prop;
+	glk_css_hint_clear(wintype_TextBuffer, CSS_Window, style_Normal,
+		BufPtr(prop), BufLen(prop));
+];
+
+[ CssInput prop val;
+	glk_css_hint_set(wintype_TextBuffer, CSS_Input, style_Normal,
+		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
+[ CssInlineInput prop val;
+	glk_css_inline_set(CSS_Input, BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
+[ CssClearInput prop;
+	glk_css_inline_clear(CSS_Input, BufPtr(prop), BufLen(prop));
+];
+
+! Left column (50% width) for demos; mainwin stays on the right at full height.
+[ BeginDemoColumn;
+	win_demo_flex = glk_window_open(mainwin, winmethod_Left + winmethod_Proportional, 50,
+		wintype_TextBuffer, 0);
+	return win_demo_flex;
+];
+
+! Peel a fixed-height strip from the bottom of the left-column remainder.
+! Always split win_demo_flex (not the previous strip) — splitting a fixed leaf
+! leaves that leaf at height 0 and produces tiny/unreadable demos.
+[ OpenDemoLines lines;
+	return glk_window_open(win_demo_flex, winmethod_Below + winmethod_Fixed, lines,
+		wintype_TextBuffer, 0);
+];
+
+! Label + styled hyperlink + adjacent plain hyperlink for easy compare.
+[ LinkSample expect_label prop val;
+	print "EXPECT ", (string) expect_label, ": ";
+	CssInlineLink(prop, val);
+	glk_set_hyperlink(1);
+	print "THIS LINK";
+	glk_set_hyperlink(0);
+	CssClearLink(prop);
+	print "   |   plain: ";
+	glk_set_hyperlink(2);
+	print "THIS LINK";
+	glk_set_hyperlink(0);
+	new_line;
 ];
 
 [ Section title;
@@ -312,29 +395,28 @@ Array cmd_q buffer "q";
 	rtrue;
 ];
 
-[ CloseSplitWindows;
-	if (win_para) {
-		glk_window_close(win_para);
-		win_para = 0;
-	}
+[ CloseAllDemos;
+	if (win_demo) { glk_window_close(win_demo); win_demo = 0; }
+	if (win_navy) { glk_window_close(win_navy); win_navy = 0; }
+	if (win_span_nocolor) { glk_window_close(win_span_nocolor); win_span_nocolor = 0; }
+	if (win_span_clear) { glk_window_close(win_span_clear); win_span_clear = 0; }
+	win_demo_flex = 0;
 	glk_set_window(mainwin);
 ];
 
+[ CloseSplitWindows;
+	CloseAllDemos();
+];
+
 [ ClearHintState;
-	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_Normal);
-	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_Emphasized);
-	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_Header);
-	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_Subheader);
-	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_Note);
-	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_BlockQuote);
-	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_User1);
-	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_User2);
+	glk_css_hint_clear_all_by_window(wintype_TextBuffer);
 ];
 
 [ PrintPrompt;
 	new_line;
-	print "Commands: restart, quit. Listening for arrange events^";
-	print "(e.g. toggle ~Games can set colors and styles~).^";
+	print "Commands: restart, quit, input border on|off|clear.^";
+	print "(Listening for arrange — e.g. toggle ~Games can set colors and styles~.)^";
+	print "EXPECT: CSS_Input border from hint (solid) unless overridden by inline.^";
 	print "> ";
 ];
 
@@ -362,17 +444,36 @@ Array cmd_q buffer "q";
 			done = 2;
 			continue;
 		}
-		print "Unknown command. Try restart or quit.^";
+		if (LineMatches(cmd_input_border_off)) {
+			CssInlineInput(p_border_style, v_none);
+			print "[CSS_Input inline border-style:none]^";
+			print "> ";
+			continue;
+		}
+		if (LineMatches(cmd_input_border_on)) {
+			CssInlineInput(p_border_style, v_solid);
+			print "[CSS_Input inline border-style:solid]^";
+			print "> ";
+			continue;
+		}
+		if (LineMatches(cmd_input_border_clear)) {
+			CssClearInput(p_border_style);
+			print "[CSS_Input inline border-style cleared (hint applies again)]^";
+			print "> ";
+			continue;
+		}
+		print "Unknown command. Try restart, quit, or input border on|off|clear.^";
 		print "> ";
 	}
 	return done;
 ];
 
-[ RunTests
-	win_span_full win_span_nocolor win_span_clear win_num;
+[ RunTests;
 
 	print "CSS BASIC TEST BEGIN^";
-	print "gestalt_CSSBasic / function IDs: 0x1110-0x111C^";
+	print "gestalt_CSSBasic / function IDs: 0x1110-0x1118^";
+	print "(CSS_Image=", CSS_Image, " reserved / not exercised; CSS_Input=", CSS_Input,
+		" border-style set before mainwin open.)^";
 
 	! ======================================================================
 	Section("1. Inline color");
@@ -564,10 +665,12 @@ Array cmd_q buffer "q";
 	CssClearPara(p_align);
 
 	! ======================================================================
-	Section("10. Paragraph hints (CSS_Paragraph — open window after set)");
+	Section("10–15. Packed left-column demo (open after all hints set)");
 	print "(Like stylehints: css_hint_set only affects windows opened AFTER.^";
 	print " Already-open windows keep their creation-time snapshot.)^";
+	print "(One tall LEFT demo holds para+span+num+link; only navy/snapshot strips peel off.)^";
 
+	! Paragraph hints (§10)
 	CssHintPara(style_User1, p_align, v_left);
 	CssHintPara(style_User1, p_bgcolor, v_yellow);
 	CssHintPara(style_User2, p_align, v_right);
@@ -581,133 +684,137 @@ Array cmd_q buffer "q";
 	CssHintPara(style_Subheader, p_indent, v_em15);
 	CssHintPara(style_Emphasized, p_margin_l, v_12pt);
 	CssHintPara(style_Emphasized, p_indent, v_0);
-	! Paragraph background alone (no other para props on this style here).
 	CssHintPara(style_Normal, p_bgcolor, v_silver);
 
-	glk_set_style(style_User1);
-	print "CONTROL win (open before hints): User1 — expect NO left-align / yellow bg.^";
-	glk_set_style(style_Normal);
-
-	win_para = glk_window_open(mainwin, winmethod_Left + winmethod_Proportional, 42,
-		wintype_TextBuffer, 0);
-	glk_set_window(win_para);
-	glk_set_style(style_Header);
-	print "win_para (opened after para hints)^";
-	glk_set_style(style_Normal);
-	print "Normal background-color:silver only — The quick brown fox jumps over the lazy dog.^";
-	glk_set_style(style_User1);
-	print "User1 text-align:left + background-color:yellow — The quick brown fox jumps over the lazy dog.^";
-	glk_set_style(style_User2);
-	print "User2 text-align:right — The quick brown fox jumps over the lazy dog.^";
-	glk_set_style(style_BlockQuote);
-	print "BlockQuote text-align:center + background-color:cyan — The quick brown fox jumps over the lazy dog.^";
-	glk_set_style(style_Note);
-	print "Note justify + margins 24px + background-color:pink — The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.^";
-	glk_set_style(style_Header);
-	print "Header text-indent:2em — first line indented.^";
-	glk_set_style(style_Subheader);
-	print "Subheader text-indent:1.5em — fractional first-line indent.^";
-	glk_set_style(style_Emphasized);
-	print "Emphasized margin-left:12pt text-indent:0 — body indent.^";
-	glk_set_style(style_Normal);
-
-	SubSection("Multi-line reverse (paragraph background)");
-	print "(Expect content-box fills inverted with the text across wraps — full bars inside margins, not glyph-only.)^";
-	print "User1 yellow para bg + reverse:^";
-	glk_set_style(style_User1);
-	CssInline(p_reverse, v_reverse);
-	print "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump. The five boxing wizards jump quickly.^";
-	CssClear(p_reverse);
-	glk_set_style(style_Normal);
-	print "Normal silver para bg + reverse:^";
-	CssInline(p_reverse, v_reverse);
-	print "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump. The five boxing wizards jump quickly.^";
-	CssClear(p_reverse);
-
-	glk_set_window(mainwin);
-
-	! ======================================================================
-	Section("10b. Window selector (empty sel — open window after set)");
-	print "(Empty selector styles the window itself. background-color fills the pane.)^";
-	CssWindow(p_bgcolor, v_navy);
-	win_para = glk_window_open(mainwin, winmethod_Left + winmethod_Proportional, 30,
-		wintype_TextBuffer, 0);
-	glk_set_window(win_para);
-	print "win after empty-selector background-color:navy — pane should be navy.^";
-	glk_set_style(style_Normal);
-	print "Normal text on navy window.^";
-	glk_set_window(mainwin);
-
-	! ======================================================================
-	Section("11. Span hints (CSS_Span — open window after each change)");
-
+	! Span hints (§11 full) + set_num (§12) + hyperlink hints (§15) — same snapshot window
 	CssHintSpan(style_User1, p_color, v_purple);
 	CssHintSpan(style_User1, p_weight, v_bold);
 	CssHintSpan(style_User1, p_decor, v_underline);
+	glk_css_hint_set_num(wintype_TextBuffer, CSS_Span, style_User2,
+		BufPtr(p_weight), BufLen(p_weight), 700);
+	CssHintLink(style_Normal, p_color, v_orange);
+	CssHintLink(style_Normal, p_weight, v_bold);
+	CssHintLink(style_User1, p_color, v_lime);
+	CssHintLink(style_User1, p_style, v_italic);
 
 	glk_set_style(style_User1);
-	print "CONTROL win: User1 — expect NO purple/bold/underline from hints.^";
+	print "CONTROL mainwin User1: NO yellow/purple/bold/underline from hints.^";
+	glk_set_style(style_User2);
+	print "CONTROL mainwin User2: NOT bold from set_num.^";
+	glk_set_style(style_Normal);
+	print "CONTROL mainwin Normal link: ";
+	glk_set_hyperlink(10);
+	print "THIS LINK";
+	glk_set_hyperlink(0);
+	print " — should NOT be orange/bold from hyperlink hints.^";
+
+	win_demo = BeginDemoColumn();
+	glk_set_window(win_demo);
+	glk_set_style(style_Header);
+	print "LEFT DEMO (packed hints)^";
 	glk_set_style(style_Normal);
 
-	win_span_full = glk_window_open(win_para, winmethod_Below + winmethod_Proportional, 50,
-		wintype_TextBuffer, 0);
-	glk_set_window(win_span_full);
-	print "win_span_full (after span set):^";
+	SubSection("10. Paragraph");
+	print "EXPECT silver bar behind this whole Normal line.^";
 	glk_set_style(style_User1);
-	print "User1 purple + bold + underline.^";
+	print "EXPECT yellow bar + left-aligned User1 (also purple+bold+underline from span).^";
+	glk_set_style(style_User2);
+	print "EXPECT right-aligned User2 + bold (weight 700).^";
+	glk_set_style(style_BlockQuote);
+	print "EXPECT cyan bar + centered BlockQuote line.^";
+	glk_set_style(style_Note);
+	print "EXPECT pink bar + justified Note with side margins — The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.^";
+	glk_set_style(style_Header);
+	print "EXPECT Header first line indented ~2em.^";
+	glk_set_style(style_Subheader);
+	print "EXPECT Subheader first line indented ~1.5em.^";
+	glk_set_style(style_Emphasized);
+	print "EXPECT Emphasized body indented (margin-left), first line flush with body.^";
+	glk_set_style(style_Normal);
+
+	SubSection("Multi-line reverse (paragraph background)");
+	print "EXPECT full-width inverted bars (not glyph-only), wrapping with the text:^";
+	glk_set_style(style_User1);
+	CssInline(p_reverse, v_reverse);
+	print "Yellow para + reverse: The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump.^";
+	CssClear(p_reverse);
+	glk_set_style(style_Normal);
+	CssInline(p_reverse, v_reverse);
+	print "Silver para + reverse: The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump.^";
+	CssClear(p_reverse);
+
+	SubSection("11. Span User1");
+	glk_set_style(style_User1);
+	print "EXPECT User1: purple AND bold AND underlined (yellow para bar too).^";
+	glk_set_style(style_Normal);
+	print "Normal (for compare): not purple/bold/underlined.^";
+
+	SubSection("12. set_num User2");
+	glk_set_style(style_User2);
+	print "EXPECT User2: bold (weight 700), right-aligned.^";
+	glk_set_style(style_Normal);
+	print "Normal (for compare): not bold from that hint.^";
+
+	SubSection("15. Hyperlink hints");
+	glk_set_style(style_Normal);
+	print "EXPECT orange+bold: ";
+	glk_set_hyperlink(11);
+	print "THIS LINK";
+	glk_set_hyperlink(0);
+	print "   |   plain Normal text (not a link).^";
+	glk_set_style(style_User1);
+	print "EXPECT lime+italic link: ";
+	glk_set_hyperlink(12);
+	print "THIS LINK";
+	glk_set_hyperlink(0);
+	print "   |   plain User1 (purple+bold+underline, not a link).^";
 	glk_set_style(style_Normal);
 	glk_set_window(mainwin);
+	print "(Packed left demo stays open. Small strips below it are navy + span snapshots.)^";
+
+	! ======================================================================
+	Section("10b. CSS_Window hints (own pane — open after set)");
+	print "(CSS_Window styles the window chrome/pane, not individual paragraphs.)^";
+
+	! Drop leftover Normal silver so it cannot paint over the navy pane.
+	CssHintClearPara(style_Normal, p_bgcolor);
+	CssHintClearPara(style_User1, p_bgcolor);
+	CssWindow(p_bgcolor, v_navy);
+	CssWindow(p_color, v_white);
+
+	win_navy = OpenDemoLines(2);
+	glk_set_window(win_navy);
+	print "10b. CSS_Window navy^";
+	glk_set_window(mainwin);
+
+	CssWindowClear(p_bgcolor);
+	CssWindowClear(p_color);
+
+	! ======================================================================
+	Section("11b. Span snapshot siblings (open after each clear)");
+	print "(Packed demo keeps its snapshot; these strips open under the new hint state.)^";
 
 	CssHintClearSpan(style_User1, p_color);
 
-	glk_set_window(win_span_full);
+	glk_set_window(win_demo);
 	glk_set_style(style_User1);
-	print "CONTROL win_span_full after clear color: still purple (open window).^";
+	print "STILL EXPECT purple (snapshot): clearing color later does not restyle this window.^";
 	glk_set_style(style_Normal);
 	glk_set_window(mainwin);
 
-	win_span_nocolor = glk_window_open(win_span_full, winmethod_Below + winmethod_Proportional, 50,
-		wintype_TextBuffer, 0);
+	win_span_nocolor = OpenDemoLines(2);
 	glk_set_window(win_span_nocolor);
-	print "win_span_nocolor (opened after clear color):^";
 	glk_set_style(style_User1);
-	print "User1 bold+underline, no purple.^";
+	print "11b. color clear EXPECT: bold+underline, NOT purple^";
 	glk_set_style(style_Normal);
 	glk_set_window(mainwin);
 
 	glk_css_hint_clear_all_by_style(wintype_TextBuffer, style_User1);
 
-	glk_set_window(win_span_nocolor);
-	glk_set_style(style_User1);
-	print "CONTROL win_span_nocolor after clear_all: still bold+underline.^";
-	glk_set_style(style_Normal);
-	glk_set_window(mainwin);
-
-	win_span_clear = glk_window_open(win_span_nocolor, winmethod_Below + winmethod_Proportional, 50,
-		wintype_TextBuffer, 0);
+	win_span_clear = OpenDemoLines(2);
 	glk_set_window(win_span_clear);
-	print "win_span_clear (opened after clear_all):^";
 	glk_set_style(style_User1);
-	print "User1 library defaults.^";
-	glk_set_style(style_Normal);
-	glk_set_window(mainwin);
-
-	! ======================================================================
-	Section("12. css_hint_set_num (open window after set)");
-
-	glk_css_hint_set_num(wintype_TextBuffer, style_User2, CSS_Span,
-		BufPtr(p_weight), BufLen(p_weight), 700);
-
-	glk_set_style(style_User2);
-	print "CONTROL win: User2 — expect NO bold from set_num.^";
-	glk_set_style(style_Normal);
-
-	win_num = glk_window_open(win_span_clear, winmethod_Below + winmethod_Proportional, 50,
-		wintype_TextBuffer, 0);
-	glk_set_window(win_num);
-	print "win_num (opened after set_num 700):^";
-	glk_set_style(style_User2);
-	print "User2 font-weight 700.^";
+	print "11b. clear_all EXPECT: library defaults.^";
 	glk_set_style(style_Normal);
 	glk_set_window(mainwin);
 
@@ -716,11 +823,39 @@ Array cmd_q buffer "q";
 
 	CssInline(p_color, v_orange);
 	CssInline(p_weight, v_bold);
-	print "orange+bold before clear color: Sample";
+	print "EXPECT orange+bold: Sample";
 	new_line;
 	CssClear(p_color);
-	print "after clear color (still bold): Sample";
+	print "EXPECT bold only (color cleared): Sample";
 	CssClear(p_weight);
+	new_line;
+
+	! ======================================================================
+	Section("14. Inline CSS_Hyperlink (styles next hyperlink)");
+	print "(Each line: styled THIS LINK | plain THIS LINK for comparison.)^";
+
+	LinkSample("red", p_color, v_red);
+	LinkSample("green (#00aa00)", p_color, v_hash_rrggbb);
+	LinkSample("bold", p_weight, v_bold);
+	LinkSample("italic", p_style, v_italic);
+	LinkSample("yellow background", p_bgcolor, v_yellow);
+	LinkSample("no underline (text-decoration:none)", p_decor, v_none);
+	LinkSample("no underline (text-decoration-line:none)", p_decor_line, v_none);
+
+	print "EXPECT fuchsia+bold+underline: ";
+	CssInlineLink(p_color, v_fuchsia);
+	CssInlineLink(p_weight, v_bold);
+	CssInlineLink(p_decor, v_underline);
+	glk_set_hyperlink(2);
+	print "THIS LINK";
+	glk_set_hyperlink(0);
+	CssClearLink(p_color);
+	CssClearLink(p_weight);
+	CssClearLink(p_decor);
+	print "   |   plain: ";
+	glk_set_hyperlink(3);
+	print "THIS LINK";
+	glk_set_hyperlink(0);
 	new_line;
 
 	new_line;
@@ -732,9 +867,16 @@ Array cmd_q buffer "q";
 
 	@setiosys 2 0; ! select Glk I/O system
 
+	! CSS_Input is snapshotted at window open (style arg ignored).
+	CssInput(p_border_style, v_solid);
+
 	mainwin = glk_window_open(0, 0, 0, wintype_TextBuffer, 0);
 	glk_set_window(mainwin);
-	win_para = 0;
+	win_demo_flex = 0;
+	win_demo = 0;
+	win_navy = 0;
+	win_span_nocolor = 0;
+	win_span_clear = 0;
 
 	supported = glk_gestalt(gestalt_CSSBasic, 0);
 	print "gestalt_CSSBasic => ", supported, "^";
