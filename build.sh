@@ -11,6 +11,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SRC="$SCRIPT_DIR/csstest.inf"
 OUT="$SCRIPT_DIR/csstest.gblorb"
+IMG_LIGHT="$SCRIPT_DIR/img_light.png"
+IMG_DARK="$SCRIPT_DIR/img_dark.png"
 
 uname_s="$(uname -s 2>/dev/null || echo unknown)"
 case "$uname_s" in
@@ -41,6 +43,10 @@ if [ ! -f "$SRC" ]; then
 	echo "Missing source: $SRC" >&2
 	exit 1
 fi
+if [ ! -f "$IMG_LIGHT" ] || [ ! -f "$IMG_DARK" ]; then
+	echo "Missing test images: $IMG_LIGHT / $IMG_DARK" >&2
+	exit 1
+fi
 
 WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/csstest.XXXXXX")"
 trap 'rm -rf "$WORKDIR"' EXIT
@@ -57,11 +63,14 @@ echo "    INFORM6=$INFORM6"
 	"$INFORM6" -GCu "$SRC" "$ULX"
 )
 
-echo "==> cBlorb (wrap ulx -> $OUT)"
+echo "==> cBlorb (wrap ulx + pictures -> $OUT)"
 echo "    CBLORB=$CBLORB"
 {
 	printf 'storyfile leafname "csstest.gblorb"\n'
 	printf 'storyfile "%s" include\n' "$ULX"
+	# Picture numbers match glk_image_draw resource IDs in csstest.inf.
+	printf 'picture 1 "%s"\n' "$IMG_LIGHT"
+	printf 'picture 2 "%s"\n' "$IMG_DARK"
 } >"$BLURB"
 "$CBLORB" "$BLURB" "$OUT"
 

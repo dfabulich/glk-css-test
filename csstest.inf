@@ -28,9 +28,14 @@ Constant evtype_Arrange = 5;
 Constant CSS_Span = 0;
 Constant CSS_Paragraph = 1;
 Constant CSS_Hyperlink = 2;
-Constant CSS_Image = 3;      ! reserved (not exercised here)
+Constant CSS_Image = 3;
 Constant CSS_Input = 4;
 Constant CSS_Window = 5;
+
+Constant gestalt_Graphics = 6;
+Constant imagealign_InlineDown = 2;
+Constant pic_light = 1; ! img_light.png in gblorb
+Constant pic_dark = 2;  ! img_dark.png in gblorb
 
 Global mainwin;
 Global win_demo_flex; ! left-column remainder; always split this, never the last fixed leaf
@@ -221,6 +226,10 @@ Array cmd_input_border_clear buffer "input border clear";
 	glk($0100, linkval);
 ];
 
+[ glk_image_draw win image val1 val2;
+	return glk($00E1, win, image, val1, val2);
+];
+
 ! --- Helpers: buffer arrays are (len word) + bytes --------------------------
 
 [ BufPtr arr; return arr + 4; ];
@@ -294,12 +303,25 @@ Array cmd_input_border_clear buffer "input border clear";
 		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
 ];
 
+[ CssImage prop val;
+	glk_css_hint_set(wintype_TextBuffer, CSS_Image, style_Normal,
+		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
 [ CssInlineInput prop val;
 	glk_css_inline_set(CSS_Input, BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
 ];
 
 [ CssClearInput prop;
 	glk_css_inline_clear(CSS_Input, BufPtr(prop), BufLen(prop));
+];
+
+[ CssInlineImage prop val;
+	glk_css_inline_set(CSS_Image, BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+];
+
+[ CssClearImage prop;
+	glk_css_inline_clear(CSS_Image, BufPtr(prop), BufLen(prop));
 ];
 
 ! Left column (50% width) for demos; mainwin stays on the right at full height.
@@ -472,7 +494,7 @@ Array cmd_input_border_clear buffer "input border clear";
 
 	print "CSS BASIC TEST BEGIN^";
 	print "gestalt_CSSBasic / function IDs: 0x1110-0x1118^";
-	print "(CSS_Image=", CSS_Image, " reserved / not exercised; CSS_Input=", CSS_Input,
+	print "(CSS_Image=", CSS_Image, " border-style + pictures 1/2; CSS_Input=", CSS_Input,
 		" border-style set before mainwin open.)^";
 
 	! ======================================================================
@@ -663,6 +685,23 @@ Array cmd_input_border_clear buffer "input border clear";
 	CssInlinePara(p_align, v_justify);
 	print "text-align:justify — The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump.^";
 	CssClearPara(p_align);
+
+	if (glk_gestalt(gestalt_Graphics, 0)) {
+		print "(Image-only lines: paragraph text-align should place the picture.)^";
+		print "EXPECT text-align:center — light grey image alone on the next line:^";
+		CssInlinePara(p_align, v_center);
+		glk_image_draw(mainwin, pic_light, imagealign_InlineDown, 0);
+		new_line;
+		CssClearPara(p_align);
+
+		print "EXPECT text-align:right — dark grey image alone on the next line:^";
+		CssInlinePara(p_align, v_right);
+		glk_image_draw(mainwin, pic_dark, imagealign_InlineDown, 0);
+		new_line;
+		CssClearPara(p_align);
+	} else {
+		print "(gestalt_Graphics => 0; skipping image text-align samples.)^";
+	}
 
 	! ======================================================================
 	Section("10–15. Packed left-column demo (open after all hints set)");
@@ -858,6 +897,32 @@ Array cmd_input_border_clear buffer "input border clear";
 	glk_set_hyperlink(0);
 	new_line;
 
+	! ======================================================================
+	Section("16. CSS_Image border (hint solid; inline none on second draw)");
+	print "(CSS_Image border-style:solid was set before mainwin opened.)^";
+
+	if (~~glk_gestalt(gestalt_Graphics, 0)) {
+		print "gestalt_Graphics => 0; skipping image draws.^";
+	} else {
+		print "EXPECT solid border (hint): light grey 48x48^";
+		glk_image_draw(mainwin, pic_light, imagealign_InlineDown, 0);
+		new_line;
+		print "EXPECT no border (inline none): light grey 48x48^";
+		CssInlineImage(p_border_style, v_none);
+		glk_image_draw(mainwin, pic_light, imagealign_InlineDown, 0);
+		CssClearImage(p_border_style);
+		new_line;
+
+		print "EXPECT solid border (hint): dark grey 48x48^";
+		glk_image_draw(mainwin, pic_dark, imagealign_InlineDown, 0);
+		new_line;
+		print "EXPECT no border (inline none): dark grey 48x48^";
+		CssInlineImage(p_border_style, v_none);
+		glk_image_draw(mainwin, pic_dark, imagealign_InlineDown, 0);
+		CssClearImage(p_border_style);
+		new_line;
+	}
+
 	new_line;
 	print "CSS BASIC TEST END^";
 ];
@@ -867,8 +932,9 @@ Array cmd_input_border_clear buffer "input border clear";
 
 	@setiosys 2 0; ! select Glk I/O system
 
-	! CSS_Input is snapshotted at window open (style arg ignored).
+	! CSS_Input / CSS_Image are snapshotted at window open (style arg ignored).
 	CssInput(p_border_style, v_solid);
+	CssImage(p_border_style, v_solid);
 
 	mainwin = glk_window_open(0, 0, 0, wintype_TextBuffer, 0);
 	glk_set_window(mainwin);
