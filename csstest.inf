@@ -8,10 +8,10 @@ Constant gestalt_CSSBasic = $1110;
 
 Constant style_Normal = 0;
 Constant style_Emphasized = 1;
+Constant style_Alert = 2;
 Constant style_Header = 3;
 Constant style_Subheader = 4;
 Constant style_Note = 6;
-Constant style_BlockQuote = 7;
 Constant style_User1 = 9;
 Constant style_User2 = 10;
 
@@ -713,8 +713,8 @@ Array cmd_input_border_clear buffer "input border clear";
 	CssHintPara(style_User1, p_align, v_left);
 	CssHintPara(style_User1, p_bgcolor, v_yellow);
 	CssHintPara(style_User2, p_align, v_right);
-	CssHintPara(style_BlockQuote, p_align, v_center);
-	CssHintPara(style_BlockQuote, p_bgcolor, v_cyan);
+	CssHintPara(style_Alert, p_align, v_center);
+	CssHintPara(style_Alert, p_bgcolor, v_cyan);
 	CssHintPara(style_Note, p_align, v_justify);
 	CssHintPara(style_Note, p_margin_l, v_24px);
 	CssHintPara(style_Note, p_margin_r, v_24px);
@@ -759,8 +759,8 @@ Array cmd_input_border_clear buffer "input border clear";
 	print "EXPECT yellow bar + left-aligned User1 (also purple+bold+underline from span).^";
 	glk_set_style(style_User2);
 	print "EXPECT right-aligned User2 + bold (weight 700).^";
-	glk_set_style(style_BlockQuote);
-	print "EXPECT cyan bar + centered BlockQuote line.^";
+	glk_set_style(style_Alert);
+	print "EXPECT cyan bar + centered Alert line.^";
 	glk_set_style(style_Note);
 	print "EXPECT pink bar + justified Note with side margins — The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.^";
 	glk_set_style(style_Header);
@@ -813,7 +813,7 @@ Array cmd_input_border_clear buffer "input border clear";
 
 	! ======================================================================
 	Section("10b. CSS_Window hints (own pane — open after set)");
-	print "(CSS_Window styles the window chrome/pane, not individual paragraphs.)^";
+	print "(CSS_Window: background stays on the pane; inheritable props like color cascade to all styles.)^";
 
 	! Drop leftover Normal silver so it cannot paint over the navy pane.
 	CssHintClearPara(style_Normal, p_bgcolor);
@@ -823,7 +823,7 @@ Array cmd_input_border_clear buffer "input border clear";
 
 	win_navy = OpenDemoLines(2);
 	glk_set_window(win_navy);
-	print "10b. CSS_Window navy^";
+	print "10b. CSS_Window navy + inherited white text^";
 	glk_set_window(mainwin);
 
 	CssWindowClear(p_bgcolor);
