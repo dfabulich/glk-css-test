@@ -3,6 +3,12 @@
 !   https://curiousdannii.github.io/if/glk-proposals.html#css
 !   https://intfiction.org/t/glk-extension-proposal-css/66228
 !
+! version.inf (Release / Serial / GAME_*) is written by build.sh into the
+! compile workdir and found via Include_Path (++workdir).
+Include "version.inf";
+
+! Stable Treaty of Babel IFID (embedded as UUID://…/ for babel tooling).
+Array Embedded_IFID string "UUID://4F0B01F7-AB3E-433A-801E-4D1A092B0929/";
 
 Constant gestalt_CSSBasic = $1110;
 
@@ -461,6 +467,16 @@ Array cmd_q buffer "q";
 	return done;
 ];
 
+[ Banner x;
+	! Retain Embedded_IFID in the story file so babel can find UUID://…/.
+	x = Embedded_IFID->0;
+
+	print "Glk CSS Basic Test^";
+	print "by Dan Fabulich^";
+	print "Release ", GAME_RELEASE, " / Serial number ", (string) GAME_SERIAL, "^";
+	new_line;
+];
+
 [ RunTests;
 
 	print "CSS BASIC TEST BEGIN^";
@@ -915,6 +931,8 @@ Array cmd_q buffer "q";
 	win_span_nocolor = 0;
 	win_span_clear = 0;
 
+	Banner();
+
 	supported = glk_gestalt(gestalt_CSSBasic, 0);
 	print "gestalt_CSSBasic => ", supported, "^";
 	if (~~supported) {
@@ -922,6 +940,7 @@ Array cmd_q buffer "q";
 		print "CSS BASIC TEST END^";
 		while (CommandLoop() == 2) {
 			glk_window_clear(mainwin);
+			Banner();
 			print "gestalt_CSSBasic => ", supported, "^";
 			print "CSS Basic not available; nothing further to exercise.^";
 			print "CSS BASIC TEST END^";
@@ -937,6 +956,7 @@ Array cmd_q buffer "q";
 		CloseSplitWindows();
 		ClearHintState();
 		glk_window_clear(mainwin);
+		Banner();
 	}
 	glk_exit();
 ];
