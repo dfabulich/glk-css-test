@@ -144,9 +144,6 @@ Array line_buffer -> 80;
 Array cmd_restart buffer "restart";
 Array cmd_quit buffer "quit";
 Array cmd_q buffer "q";
-Array cmd_input_border_off buffer "input border off";
-Array cmd_input_border_on buffer "input border on";
-Array cmd_input_border_clear buffer "input border clear";
 
 ! --- Glk entry points -------------------------------------------------------
 
@@ -308,14 +305,6 @@ Array cmd_input_border_clear buffer "input border clear";
 		BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
 ];
 
-[ CssInlineInput prop val;
-	glk_css_inline_set(CSS_Input, BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
-];
-
-[ CssClearInput prop;
-	glk_css_inline_clear(CSS_Input, BufPtr(prop), BufLen(prop));
-];
-
 [ CssInlineImage prop val;
 	glk_css_inline_set(CSS_Image, BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
 ];
@@ -436,9 +425,9 @@ Array cmd_input_border_clear buffer "input border clear";
 
 [ PrintPrompt;
 	new_line;
-	print "Commands: restart, quit, input border on|off|clear.^";
+	print "Commands: restart, quit.^";
 	print "(Listening for arrange — e.g. toggle ~Games can set colors and styles~.)^";
-	print "EXPECT: CSS_Input border from hint (solid) unless overridden by inline.^";
+	print "EXPECT: CSS_Input border-style:solid from hint (set before window open).^";
 	print "> ";
 ];
 
@@ -466,25 +455,7 @@ Array cmd_input_border_clear buffer "input border clear";
 			done = 2;
 			continue;
 		}
-		if (LineMatches(cmd_input_border_off)) {
-			CssInlineInput(p_border_style, v_none);
-			print "[CSS_Input inline border-style:none]^";
-			print "> ";
-			continue;
-		}
-		if (LineMatches(cmd_input_border_on)) {
-			CssInlineInput(p_border_style, v_solid);
-			print "[CSS_Input inline border-style:solid]^";
-			print "> ";
-			continue;
-		}
-		if (LineMatches(cmd_input_border_clear)) {
-			CssClearInput(p_border_style);
-			print "[CSS_Input inline border-style cleared (hint applies again)]^";
-			print "> ";
-			continue;
-		}
-		print "Unknown command. Try restart, quit, or input border on|off|clear.^";
+		print "Unknown command. Try restart or quit.^";
 		print "> ";
 	}
 	return done;
