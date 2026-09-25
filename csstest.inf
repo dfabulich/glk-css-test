@@ -51,6 +51,7 @@ Global win_demo;      ! packed para/span/num/link demos (the flex pane itself)
 Global win_navy;      ! CSS_Window navy — must be its own pane
 Global win_span_nocolor; ! opened after color clear (snapshot sibling)
 Global win_span_clear;   ! opened after clear_all (snapshot sibling)
+Global css_basic_supported; ! gestalt_CSSBasic; gates CSS calls and CSS-only prompts
 
 ! --- Property name buffers --------------------------------------------------
 
@@ -445,7 +446,8 @@ Array cmd_q buffer "q";
 	new_line;
 	print "Commands: restart, quit.^";
 	print "(Listening for arrange — e.g. toggle ~Games can set colors and styles~.)^";
-	print "EXPECT: CSS_Input border-style:solid from hint (set before window open).^";
+	if (css_basic_supported)
+		print "EXPECT: CSS_Input border-style:solid from hint (set before window open).^";
 	print "> ";
 ];
 
@@ -1008,9 +1010,16 @@ Array cmd_q buffer "q";
 
 	@setiosys 2 0; ! select Glk I/O system
 
+	! Gestalt must be checked BEFORE any CSS Glk call — unsupported
+	! interpreters fatal on unknown function codes (e.g. 0x1110).
+	supported = glk_gestalt(gestalt_CSSBasic, 0);
+	css_basic_supported = supported;
+
 	! CSS_Input / CSS_Image are snapshotted at window open (style arg ignored).
-	CssInput(p_border_style, v_solid);
-	CssImage(p_border_style, v_solid);
+	if (supported) {
+		CssInput(p_border_style, v_solid);
+		CssImage(p_border_style, v_solid);
+	}
 
 	mainwin = glk_window_open(0, 0, 0, wintype_TextBuffer, 0);
 	glk_set_window(mainwin);
@@ -1022,7 +1031,6 @@ Array cmd_q buffer "q";
 
 	Banner();
 
-	supported = glk_gestalt(gestalt_CSSBasic, 0);
 	print "gestalt_CSSBasic => ", supported, "^";
 	if (~~supported) {
 		print "CSS Basic not available; nothing further to exercise.^";
