@@ -11,6 +11,8 @@ Include "version.inf";
 Array Embedded_IFID string "UUID://4F0B01F7-AB3E-433A-801E-4D1A092B0929/";
 
 Constant gestalt_CSSBasic = $1110;
+Constant gestalt_WebBrowser = $1111;
+Constant gestalt_CSSSupports = $1119;
 
 Constant style_Normal = 0;
 Constant style_Emphasized = 1;
@@ -66,6 +68,7 @@ Array p_margin_l buffer "margin-left";
 Array p_margin_r buffer "margin-right";
 Array p_indent buffer "text-indent";
 Array p_border_style buffer "border-style";
+Array p_xyzzy buffer "xyzzy";
 
 ! --- Value buffers: colors --------------------------------------------------
 
@@ -144,6 +147,7 @@ Array v_justify buffer "justify";
 Array v_0 buffer "0";
 Array v_24px buffer "24px";
 Array v_12pt buffer "12pt";
+Array v_plugh buffer "plugh";
 
 Array event --> 4;
 Array line_buffer -> 80;
@@ -223,6 +227,14 @@ Array cmd_q buffer "q";
 
 [ glk_css_inline_clear csstarget prop proplen;
 	glk($1115, csstarget, prop, proplen);
+];
+
+[ glk_css_supports prop proplen val vallen;
+	return glk($1119, prop, proplen, val, vallen);
+];
+
+[ glk_css_supports_num prop proplen val;
+	return glk($111A, prop, proplen, val);
 ];
 
 [ glk_set_hyperlink linkval;
@@ -477,12 +489,89 @@ Array cmd_q buffer "q";
 	new_line;
 ];
 
+! Print one supports probe: "  prop: value => N"
+[ PrintBuf arr   i len bytes;
+	len = BufLen(arr);
+	bytes = BufPtr(arr);
+	for (i = 0 : i < len : i++) print (char) bytes->i;
+];
+
+[ SupportsLine prop val   r;
+	r = glk_css_supports(BufPtr(prop), BufLen(prop), BufPtr(val), BufLen(val));
+	print "  ";
+	print (PrintBuf) prop;
+	print ": ";
+	print (PrintBuf) val;
+	print " => ", r, "^";
+];
+
+! gestalt_WebBrowser / gestalt_CSSSupports, then Basic prop probes + xyzzy.
+[ ReportSupports   browser supports;
+	browser = glk_gestalt(gestalt_WebBrowser, 0);
+	supports = glk_gestalt(gestalt_CSSSupports, 0);
+
+	Section("0. Supports / browser gestalts");
+	print "gestalt_WebBrowser => ", browser;
+	if (browser)
+		print " (browser UI; authors may assume Baseline: Widely Available CSS)";
+	else
+		print " (not a browser UI)";
+	new_line;
+
+	print "gestalt_CSSSupports => ", supports;
+	if (supports)
+		print " (glk_css_supports available locally)";
+	else
+		print " (no synchronous supports probe)";
+	new_line;
+
+	if (~~supports) {
+		print "(Skipping property probes — use Basic table only, or Baseline if browser.)^";
+		return;
+	}
+
+	SubSection("Basic properties (expect 1)");
+	SupportsLine(p_color, v_red);
+	SupportsLine(p_bgcolor, v_blue);
+	SupportsLine(p_reverse, v_reverse);
+	SupportsLine(p_reverse, v_none);
+	SupportsLine(p_weight, v_bold);
+	SupportsLine(p_weight, v_normal);
+	SupportsLine(p_weight, v_400);
+	SupportsLine(p_weight, v_700);
+	print "  font-weight set_num 700 => ",
+		glk_css_supports_num(BufPtr(p_weight), BufLen(p_weight), 700), "^";
+	SupportsLine(p_style, v_italic);
+	SupportsLine(p_style, v_oblique);
+	SupportsLine(p_style, v_normal);
+	SupportsLine(p_size, v_large);
+	SupportsLine(p_size, v_small);
+	SupportsLine(p_size, v_pct100);
+	SupportsLine(p_size, v_12px);
+	SupportsLine(p_size, v_em15);
+	SupportsLine(p_family, v_mono);
+	SupportsLine(p_family, v_serif);
+	SupportsLine(p_family, v_sans);
+	SupportsLine(p_decor, v_underline);
+	SupportsLine(p_decor, v_none);
+	SupportsLine(p_decor_line, v_underline);
+	SupportsLine(p_align, v_center);
+	SupportsLine(p_align, v_left);
+	SupportsLine(p_align, v_right);
+	SupportsLine(p_align, v_justify);
+	SupportsLine(p_margin_l, v_24px);
+	SupportsLine(p_margin_r, v_12pt);
+	SupportsLine(p_indent, v_em2);
+
+	SubSection("Unknown property (expect 0)");
+	SupportsLine(p_xyzzy, v_plugh);
+];
+
 [ RunTests;
 
 	print "CSS BASIC TEST BEGIN^";
-	print "gestalt_CSSBasic / function IDs: 0x1110-0x1118^";
-	print "(CSS_Image=", CSS_Image, " border-style + pictures 1/2; CSS_Input=", CSS_Input,
-		" border-style set before mainwin open.)^";
+
+	ReportSupports();
 
 	! ======================================================================
 	Section("1. Inline color");
