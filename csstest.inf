@@ -844,10 +844,12 @@ Array cmd_q buffer "q";
 	glk_set_hyperlink(0);
 	print " — should NOT be orange/bold from hyperlink hints.^";
 
+	! CSS_Window border on win_demo only (clear before later strips open).
+	CssWindow(p_border_style, v_solid);
 	win_demo = BeginDemoColumn();
+	CssWindowClear(p_border_style);
 	glk_set_window(win_demo);
 	glk_set_style(style_Header);
-	print "LEFT DEMO (packed hints)^";
 	glk_set_style(style_Normal);
 
 	SubSection("10. Paragraph");
@@ -978,16 +980,18 @@ Array cmd_q buffer "q";
 	LinkSample("no underline (text-decoration:none)", p_decor, v_none);
 	LinkSample("no underline (text-decoration-line:none)", p_decor_line, v_none);
 
-	print "EXPECT fuchsia+bold+underline: ";
+	print "EXPECT fuchsia+bold+underline+solid border: ";
 	CssInlineLink(p_color, v_fuchsia);
 	CssInlineLink(p_weight, v_bold);
 	CssInlineLink(p_decor, v_underline);
+	CssInlineLink(p_border_style, v_solid);
 	glk_set_hyperlink(2);
 	print "THIS LINK";
 	glk_set_hyperlink(0);
 	CssClearLink(p_color);
 	CssClearLink(p_weight);
 	CssClearLink(p_decor);
+	CssClearLink(p_border_style);
 	print "   |   plain: ";
 	glk_set_hyperlink(3);
 	print "THIS LINK";
@@ -995,9 +999,29 @@ Array cmd_q buffer "q";
 	new_line;
 
 	! ======================================================================
-	Section("16. CSS_Image border (hint solid; inline none on second draw)");
-	print "(CSS_Image border-style:solid was set before mainwin opened.)^";
+	Section("16. Inline border-style");
 
+	SubSection("Span only");
+	print "EXPECT solid border on wrapped span runs:^";
+	CssInline(p_border_style, v_solid);
+	print "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump. The five boxing wizards jump quickly.^";
+	CssClear(p_border_style);
+
+	SubSection("Paragraph only");
+	print "EXPECT solid border around the whole paragraph box:^";
+	CssInlinePara(p_border_style, v_solid);
+	print "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump. The five boxing wizards jump quickly.^";
+	CssClearPara(p_border_style);
+
+	SubSection("Span and paragraph together");
+	print "EXPECT both: paragraph box border AND span run borders (may nest / double):^";
+	CssInlinePara(p_border_style, v_solid);
+	CssInline(p_border_style, v_solid);
+	print "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump. The five boxing wizards jump quickly.^";
+	CssClear(p_border_style);
+	CssClearPara(p_border_style);
+
+	SubSection("CSS_Image (hint solid; inline none on second draw)");
 	if (~~glk_gestalt(gestalt_Graphics, 0)) {
 		print "gestalt_Graphics => 0; skipping image draws.^";
 	} else {
