@@ -99,6 +99,12 @@ Array v_fuchsia buffer "fuchsia";
 Array v_orange buffer "orange";
 Array v_pink buffer "pink";
 Array v_bg_silver buffer "#c0c0c0";
+Array v_light_dark_bw buffer "light-dark(#000, #fff)";
+Array v_light_dark_wb buffer "light-dark(#fff, #000)";
+Array v_light_dark_named buffer "light-dark(navy, aqua)";
+Array v_light_dark_named_bg buffer "light-dark(#e0ffff, #001a33)";
+Array v_light_dark_fg buffer "light-dark(#333, #eee)";
+Array v_light_dark_bg buffer "light-dark(#ffe4b5, #003366)";
 
 ! --- Value buffers: reverse / weight / style / decoration -------------------
 
@@ -535,6 +541,8 @@ Array cmd_q buffer "q";
 	SubSection("Basic properties (expect 1)");
 	SupportsLine(p_color, v_red);
 	SupportsLine(p_bgcolor, v_blue);
+	SupportsLine(p_color, v_light_dark_bw);
+	SupportsLine(p_bgcolor, v_light_dark_wb);
 	SupportsLine(p_reverse, v_reverse);
 	SupportsLine(p_reverse, v_none);
 	SupportsLine(p_weight, v_bold);
@@ -606,6 +614,17 @@ Array cmd_q buffer "q";
 	ColorSwatch("fuchsia", v_fuchsia);
 	ColorSwatch("orange", v_orange);
 	ColorSwatch("pink", v_pink);
+
+	SubSection("light-dark() (follows system light/dark appearance)");
+	print "(Toggle dark mode: light => first color, dark => second.)^";
+	print "(Each sample sets light-dark on BOTH color and background-color —^";
+	print " the window itself stays white, so fg alone would vanish in dark mode.)^";
+	Sample2("light-dark(#000,#fff) on light-dark(#fff,#000)",
+		p_color, v_light_dark_bw, p_bgcolor, v_light_dark_wb);
+	Sample2("light-dark(navy,aqua) on light-dark(#e0ffff,#001a33)",
+		p_color, v_light_dark_named, p_bgcolor, v_light_dark_named_bg);
+	Sample2("light-dark(#333,#eee) on light-dark(#ffe4b5,#003366)",
+		p_color, v_light_dark_fg, p_bgcolor, v_light_dark_bg);
 
 	! ======================================================================
 	Section("2. Inline background-color");
