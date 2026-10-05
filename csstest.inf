@@ -144,6 +144,10 @@ Array v_mono buffer "monospace";
 Array v_courier buffer "Courier";
 Array v_courier_new buffer "'Courier New'";
 Array v_courier_list buffer "'Courier New', Courier, monospace";
+! Offered by the Blorb's 'Font' resources (Cinzel Decorative, under this name).
+Array v_blorb_font buffer "'Blorb Display', serif";
+Array v_blorb_variable buffer "'Blorb Variable', serif";
+Array v_no_such_font buffer "'No Such Font', serif";
 
 ! --- Value buffers: paragraph -----------------------------------------------
 
@@ -738,6 +742,17 @@ Array cmd_q buffer "q";
 	Sample1("Courier", p_family, v_courier);
 	Sample1("'Courier New'", p_family, v_courier_new);
 	Sample1("'Courier New', Courier, monospace", p_family, v_courier_list);
+
+	SubSection("Blorb fonts (expect decorative capitals, Cinzel Decorative)");
+	Sample1("'Blorb Display', serif", p_family, v_blorb_font);
+	Sample2("'Blorb Display', serif + bold (Blorb's bold face)",
+		p_family, v_blorb_font, p_weight, v_bold);
+	Sample1("'No Such Font', serif (expect plain serif fallback)",
+		p_family, v_no_such_font);
+	SubSection("Blorb variable font (expect script, Dancing Script; one resource, two descriptors)");
+	Sample1("'Blorb Variable', serif", p_family, v_blorb_variable);
+	Sample2("'Blorb Variable', serif + bold (wght 700)",
+		p_family, v_blorb_variable, p_weight, v_bold);
 
 	! ======================================================================
 	Section("8. Inline text-decoration / text-decoration-line");

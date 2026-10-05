@@ -16,6 +16,16 @@ SRC="$SCRIPT_DIR/csstest.inf"
 OUT="$SCRIPT_DIR/csstest.gblorb"
 IMG_LIGHT="$SCRIPT_DIR/img_light.png"
 IMG_DARK="$SCRIPT_DIR/img_dark.png"
+FONT_REGULAR="$SCRIPT_DIR/fonts/CinzelDecorative-Regular.ttf"
+FONT_BOLD="$SCRIPT_DIR/fonts/CinzelDecorative-Bold.ttf"
+FONT_VARIABLE="$SCRIPT_DIR/fonts/DancingScript-VariableFont_wght.ttf"
+# Family name the Blorb offers the fonts under (must match csstest.inf).
+# Deliberately not the font's own name, "Cinzel Decorative", so a match
+# proves the interpreter read it from the Blorb rather than the system.
+FONT_FAMILY="Blorb Display"
+# Family name for the variable font (Dancing Script, weight axis 400-700), offered
+# as two instances of one resource (must match csstest.inf).
+FONT_VARIABLE_FAMILY="Blorb Variable"
 
 RELEASE=1
 SERIAL="${SERIAL:-$(date +%y%m%d)}"
@@ -56,6 +66,10 @@ if [ ! -f "$SRC" ]; then
 fi
 if [ ! -f "$IMG_LIGHT" ] || [ ! -f "$IMG_DARK" ]; then
 	echo "Missing test images: $IMG_LIGHT / $IMG_DARK" >&2
+	exit 1
+fi
+if [ ! -f "$FONT_REGULAR" ] || [ ! -f "$FONT_BOLD" ] || [ ! -f "$FONT_VARIABLE" ]; then
+	echo "Missing test fonts: $FONT_REGULAR / $FONT_BOLD / $FONT_VARIABLE" >&2
 	exit 1
 fi
 
@@ -141,6 +155,14 @@ echo "    CBLORB=$CBLORB"
 	printf 'picture 2 "%s"\n' "$IMG_DARK"
 } >"$BLURB"
 "$CBLORB" "$BLURB" "$OUT"
+
+echo "==> add_blorb_fonts.py (Font resources + FDes chunk)"
+# Font numbers are only Blorb bookkeeping; the game refers to the family name.
+python3 "$SCRIPT_DIR/add_blorb_fonts.py" "$OUT" "$OUT" \
+	--font 1 "$FONT_REGULAR" "$FONT_FAMILY" 400 normal \
+	--font 2 "$FONT_BOLD" "$FONT_FAMILY" 700 normal \
+	--font 3 "$FONT_VARIABLE" "$FONT_VARIABLE_FAMILY" 400 normal \
+	--font 3 "$FONT_VARIABLE" "$FONT_VARIABLE_FAMILY" 700 normal
 
 # Drop leftovers from older builds.
 rm -f "$SCRIPT_DIR/csstest.ulx" "$SCRIPT_DIR/gameinfo.dbg"
